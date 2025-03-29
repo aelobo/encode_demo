@@ -75,9 +75,9 @@ module rotorAssign #(parameter REVERSE = 0) (code, rotor_type, val);
     always @*
     begin
         if (REVERSE)
-            val_index = 12'd1039 - (rotor_type * 130) - (code * 5);
+            val_index = 12'd1039 - (rotor_type * 12'd130) - (code * 12'd5);
         else
-            val_index = 12'd2079 - (rotor_type * 130) - (code * 5);
+            val_index = 12'd2079 - (rotor_type * 12'd130) - (code * 12'd5);
 
         temp_val[4] = rotor_data[val_index];
         temp_val[3] = rotor_data[val_index - 1];

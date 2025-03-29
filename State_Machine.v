@@ -5,47 +5,43 @@ module State_Machine(
     input reset,
 	input [7:0] i_inputData,
     input rotate,
-	input rotor_start_3_en, rotor_start_2_en, rotor_start_1_en, 
-	output reg [4:0] o_rotor_start_3, o_rotor_start_2, o_rotor_start_1,
+	input rotor_start_3_en,
+    input rotor_start_2_en, 
+    input rotor_start_1_en, 
+	output reg [4:0] rotor_start_3, 
+    output reg [4:0] rotor_start_2, 
+    output reg [4:0] rotor_start_1,
 	output reg [7:0] o_outputData,
-	output reg o_valid
-);	
+	output reg o_valid,
+    output reg update_settings_out,
+    output reg [4:0] rotor3_out,
+    output reg [4:0] rotor2_out,
+    output reg [4:0] rotor1_out
+);		
 
-	reg [2:0] rotor_type_3 = 3'b010;
+    wire [4:0]   rotor_start_3_temp;
+    wire [4:0]   rotor_start_2_temp;
+    wire [4:0]   rotor_start_1_temp;
+
+    wire update_settings;
+
+    reg [2:0] rotor_type_3 = 3'b010;
 	reg [2:0] rotor_type_2 = 3'b001;
 	reg [2:0] rotor_type_1 = 3'b000;
-
-	reg [4:0] rotor_start_3;
-	reg [4:0] rotor_start_2;
-	reg [4:0] rotor_start_1;
-
-	always @(posedge clock) begin
-		if (reset) begin
-			rotor_start_3 = 5'b00000;
-			rotor_start_2 = 5'b00000;
-			rotor_start_1 = 5'b00000;
-		end
-		else begin
-			if (rotor_start_3_en) begin
-				rotor_start_3 <= rotor_start_3 + 5'b00001;
-			end
-		    else if (rotor_start_2_en) begin
-				rotor_start_3 <= rotor_start_2 + 5'b00001;
-			end
-			else if (rotor_start_1_en) begin 
-				rotor_start_3 <= rotor_start_1 + 5'b00001;
-			end
-		end
-	end
 
 	reg [4:0] ring_position_3 = 5'b00000;
 	reg [4:0] ring_position_2 = 5'b00000;
 	reg [4:0] ring_position_1 = 5'b00000;
+    
 	reg reflector_type = 1'b0;
 
 	wire [4:0] rotor1;
 	wire [4:0] rotor2;
 	wire [4:0] rotor3;
+
+    // wire [4:0] rotor1_out;
+	// wire [4:0] rotor2_out;
+	// wire [4:0] rotor3_out;
 	
 	wire [4:0] value0;	
 	wire [4:0] value1;
@@ -61,13 +57,46 @@ module State_Machine(
     wire [7:0] final_ascii;
 
     wire valid;
+
+    wire rotor_3_increment;
+    wire rotor_2_increment;
+    wire rotor_1_increment;
+
+    rotor_settings settings(
+        .i_clock            (i_clock),
+        .reset              (reset),
+        .rotor_start_3_en   (rotor_start_3_en),
+        .rotor_start_2_en   (rotor_start_2_en),
+        .rotor_start_1_en   (rotor_start_1_en), 
+	    .rotor_start_3  (rotor_start_3_temp), 
+        .rotor_start_2  (rotor_start_2_temp), 
+        .rotor_start_1  (rotor_start_1_temp),
+        .update_settings(update_settings),
+        .rotor_3_increment(rotor_3_increment),
+        .rotor_2_increment(rotor_2_increment),
+        .rotor_1_increment(rotor_1_increment)
+    ); 
+
+    always @(posedge i_clock) begin
+        rotor_start_3 <= rotor_start_3_temp;
+        rotor_start_2 <= rotor_start_2_temp;
+        rotor_start_1 <= rotor_start_1_temp;
+
+        update_settings_out <= update_settings;
+
+        rotor3_out <= rotor3;
+        rotor2_out <= rotor2;
+        rotor1_out <= rotor1;
+    end
 	
     encodeASCII encode(.ascii(i_inputData), .code(inputCode), .valid(valid)); // output o_valid
 		
 	rotor rotorcontrol(.clock(i_clock),.rotor1(rotor1),.rotor2(rotor2),.rotor3(rotor3),.reset(reset),.rotate(rotate),
 	        .rotor_type_2(rotor_type_2),.rotor_type_3(rotor_type_3),
-		    .rotor_start_1(rotor_start_1),.rotor_start_2(rotor_start_2),.rotor_start_3(rotor_start_3)
-			);
+		    .rotor_start_1(rotor_start_1),.rotor_start_2(rotor_start_2),.rotor_start_3(rotor_start_3),.update_settings(update_settings),
+			.rotor_3_increment(rotor_3_increment),
+            .rotor_2_increment(rotor_2_increment),
+            .rotor_1_increment(rotor_1_increment));
             
 	plugboardEncode plugboard(.code(inputCode),.val(value0));	
 	encode #(.REVERSE(0)) rot3Encode(.inputValue(inputCode),.rotor(rotor3),.outputValue(value1),.rotor_type(rotor_type_3),.ring_position(ring_position_3));

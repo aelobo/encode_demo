@@ -3,6 +3,7 @@ module Encode_Demo (
 	// Inputs
 	CLOCK_50,
 	KEY,
+    SW,
 
 	// Bidirectionals
 	PS2_CLK,
@@ -64,10 +65,10 @@ wire                rotor_start_3_sel;
 wire                rotor_start_2_sel;
 wire                rotor_start_1_sel;
 
-wire        [4:0]   o_rotor_start_3;    // rotor starting position
-wire        [4:0]   o_rotor_start_2;
-wire        [4:0]   o_rotor_start_1;
-wire        [7:0]   display_rotor_start;
+wire        [4:0]   rotor_start_3;    // rotor starting position
+wire        [4:0]   rotor_start_2;
+wire        [4:0]   rotor_start_1;
+reg         [7:0]   display_rotor_start;
 
 wire        [9:0]   SW_sync;            // synchronized inputs
 wire        [3:0]   KEY_sync;           
@@ -84,6 +85,12 @@ reg         [7:0]   history;            // registered scan code             (pla
 wire        [7:0]   ascii_plaintext;    // scan code -> ascii conversion    (plaintext)
 reg         [7:0]   encoded_data;       // encoded ascii value              (ciphertext)
 
+wire                update_settings_out;
+
+wire        [4:0]   rotor3_out;
+wire        [4:0]   rotor2_out;
+wire        [4:0]   rotor1_out;
+
 /*****************************************************************************
  *                             Sequential Logic                              *
  *****************************************************************************/
@@ -98,7 +105,7 @@ reg [12:0] counter;
 
 always @(posedge CLOCK_50) begin
     // On reset, go to IDLE state
-    if (~KEY[0]) begin
+    if (~KEY_sync[0]) begin
         state <= STATE_INIT;
         rotate <= 1'b1;
         history <= 8'b0;
@@ -176,31 +183,45 @@ assign rotor_start_3_sel =  SW_sync[7] && ~SW_sync[8] && ~SW_sync[9];
 assign rotor_start_2_sel = ~SW_sync[7] &&  SW_sync[8] && ~SW_sync[9];
 assign rotor_start_1_sel = ~SW_sync[7] && ~SW_sync[8] &&  SW_sync[9];
 
-assign rotor_start_3_en  = rotor_start_3_sel && ~KEY_sync[3];
-assign rotor_start_2_en  = rotor_start_2_sel && ~KEY_sync[3];
-assign rotor_start_1_en  = rotor_start_1_sel && ~KEY_sync[3];
+always @* begin
+    rotor_start_3_en  = rotor_start_3_sel && ~KEY_sync[3];
+    rotor_start_2_en  = rotor_start_2_sel && ~KEY_sync[3];
+    rotor_start_1_en  = rotor_start_1_sel && ~KEY_sync[3];
+end
 
 always @* begin
-    if (rotor_start_3_sel) display_rotor_start = {3'b000, o_rotor_start_3};
-    else if (rotor_start_2_sel) display_rotor_start = {3'b000, o_rotor_start_2};
-    else if (rotor_start_1_sel) display_rotor_start = {3'b000, o_rotor_start_1};
+    if (rotor_start_3_sel)          display_rotor_start = {3'b000, rotor_start_3};
+    else if (rotor_start_2_sel)     display_rotor_start = {3'b000, rotor_start_2};
+    else if (rotor_start_1_sel)     display_rotor_start = {3'b000, rotor_start_1};
+    else                            display_rotor_start = 8'b0;
 end
 
 /*****************************************************************************
  *                            Combinational Logic                            *
  *****************************************************************************/
 
-assign LEDR[0] = (state == STATE_INIT);
-assign LEDR[1] = (state == STATE_IDLE);
-assign LEDR[2] = (state == STATE_MAKE);
-assign LEDR[3] = (state == STATE_BREAK);
-assign LEDR[4] = (state == STATE_WAIT);
+assign HEX2 = 7'h7F;
+// assign HEX3 = 7'h7F;
+// assign HEX5 = 7'h7F;
 
-assign LEDR[5] = 1'b0;
-assign LEDR[6] = 1'b0;
-assign LEDR[7] = 1'b0;
-assign LEDR[8] = 1'b0;
-assign LEDR[9] = 1'b0;
+// assign LEDR[0] = (state == STATE_INIT);
+// assign LEDR[1] = (state == STATE_IDLE);
+// assign LEDR[2] = (state == STATE_MAKE);
+// assign LEDR[3] = (state == STATE_BREAK);
+// assign LEDR[4] = (state == STATE_WAIT);
+
+assign LEDR[0] = update_settings_out;
+assign LEDR[1] = 1'b0;
+assign LEDR[2] = 1'b0;
+assign LEDR[3] = 1'b0;
+
+assign LEDR[4] = rotor_start_3_en;
+assign LEDR[5] = rotor_start_2_en;
+assign LEDR[6] = rotor_start_1_en;
+
+assign LEDR[7] = rotor_start_3_sel;
+assign LEDR[8] = rotor_start_2_sel;
+assign LEDR[9] = rotor_start_1_sel;
 
 /*****************************************************************************
  *                              Internal Modules                             *
@@ -209,7 +230,7 @@ assign LEDR[9] = 1'b0;
     PS2_Controller PS2 (
         // Inputs
         .CLOCK_50			(CLOCK_50),
-        .reset				(~KEY[0]),
+        .reset				(~KEY_sync[0]),
 
         // Bidirectionals
         .PS2_CLK			(PS2_CLK),
@@ -229,74 +250,132 @@ assign LEDR[9] = 1'b0;
     // State machine to control encryption
     State_Machine Enigma (
         .i_clock			(CLOCK_50),
-        .reset				(~KEY[0]),
+        .reset				(~KEY_sync[0]),
         .i_inputData        (ascii_plaintext),
         .rotate             (rotate),
 
+        .rotor_start_3_en   (rotor_start_3_en),
+        .rotor_start_2_en   (rotor_start_2_en),
+        .rotor_start_1_en   (rotor_start_1_en),
+
+        .rotor_start_3    (rotor_start_3),
+        .rotor_start_2    (rotor_start_2),
+        .rotor_start_1    (rotor_start_1), 
+
         .o_outputData	    (o_outputData), // final output (in decimal)
-        .o_valid            (o_valid)
+        .o_valid            (o_valid),
+        .update_settings_out(update_settings_out),
+
+        .rotor3_out         (rotor3_out),
+        .rotor2_out         (rotor2_out),
+        .rotor1_out         (rotor1_out)
     );
 
+
     // Plaintext hex scan code on seven segment 0
-    Hexadecimal_To_Seven_Segment Segment0 (
-        .hex_number			(display_rotor_start[3:0]),
+    Scan_Code_to_Seven_Segment Segment0 (
+        .scan_code			(history[7:0]),
         .seven_seg_display	(HEX0)
     );
 
-    // Plaintext hex scan code on seven segment 1
-    Hexadecimal_To_Seven_Segment Segment1 (
-        .hex_number			(display_rotor_start[7:4]),
+    // Plaintext hex scan code on seven segment 2
+    ASCII_to_Seven_Segment Segment1 (
+        .ascii              (encoded_data[7:0]),
         .seven_seg_display	(HEX1)
     );
 
-    // Plaintext hex scan code on seven segment 2
-    Hexadecimal_To_Seven_Segment Segment2 (
-        .hex_number			(received_data[3:0]),
-        .seven_seg_display	(HEX2)
-    );
-
-    // Plaintext hex scan code on seven segment 3
-    Hexadecimal_To_Seven_Segment Segment3 (
-        .hex_number			(received_data[7:4]),
+    // Plaintext hex scan code on seven segment 4
+    ASCII_to_Seven_Segment Segment2 (
+        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
         .seven_seg_display	(HEX3)
     );
 
     // Plaintext hex scan code on seven segment 4
-    Hexadecimal_To_Seven_Segment Segment4 (
-        .hex_number			(encoded_data[3:0]),
+    ASCII_to_Seven_Segment Segment3 (
+        .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
         .seven_seg_display	(HEX4)
     );
 
-    // Plaintext hex scan code on seven segment 5
-    Hexadecimal_To_Seven_Segment Segment5 (
-        .hex_number			(encoded_data[7:4]),
+    // Plaintext hex scan code on seven segment 4
+    ASCII_to_Seven_Segment Segment4 (
+        .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
         .seven_seg_display	(HEX5)
     );
 
+
+    // Hexadecimal_To_Seven_Segment Segment4 (
+    //     .hex_number			(display_rotor_start[3:0]),
+    //     .seven_seg_display	(HEX4)
+    // );
+
+    // // // Plaintext hex scan code on seven segment 1
+    // Hexadecimal_To_Seven_Segment Segment5 (
+    //     .hex_number			(display_rotor_start[7:4]),
+    //     .seven_seg_display	(HEX5)
+    // );
+    
+
+
+    // // Plaintext hex scan code on seven segment 0
+    // Hexadecimal_To_Seven_Segment Segment0 (
+    //     .hex_number			(display_rotor_start[3:0]),
+    //     .seven_seg_display	(HEX0)
+    // );
+
+    // // Plaintext hex scan code on seven segment 1
+    // Hexadecimal_To_Seven_Segment Segment1 (
+    //     .hex_number			(display_rotor_start[7:4]),
+    //     .seven_seg_display	(HEX1)
+    // );
+
+    // // Plaintext hex scan code on seven segment 2
+    // Hexadecimal_To_Seven_Segment Segment2 (
+    //     .hex_number			(received_data[3:0]),
+    //     .seven_seg_display	(HEX2)
+    // );
+
+    // // Plaintext hex scan code on seven segment 3
+    // Hexadecimal_To_Seven_Segment Segment3 (
+    //     .hex_number			(received_data[7:4]),
+    //     .seven_seg_display	(HEX3)
+    // );
+
+    // // Plaintext hex scan code on seven segment 4
+    // Hexadecimal_To_Seven_Segment Segment4 (
+    //     .hex_number			(encoded_data[3:0]),
+    //     .seven_seg_display	(HEX4)
+    // );
+
+    // // Plaintext hex scan code on seven segment 5
+    // Hexadecimal_To_Seven_Segment Segment5 (
+    //     .hex_number			(encoded_data[7:4]),
+    //     .seven_seg_display	(HEX5)
+    // );
+
     Synchronizer #(4) KeySync (
         .clock              (CLOCK_50),
-        .in                 (KEY[3:0]),
-        .out                (KEY_sync[3:0])
+        .async              (KEY[3:0]),
+        .sync               (KEY_sync[3:0])
     );
 
     Synchronizer #(10) SwitchSync (
         .clock              (CLOCK_50),
-        .in                 (SW[9:0]),
-        .out                (SW_sync[9:0])
+        .async              (SW[9:0]),
+        .sync               (SW_sync[9:0])
     );
 
 endmodule
 
 module Synchronizer #(parameter WIDTH=1) (
-    input CLOCK_50,
+    input clock,
     input [WIDTH-1:0] async,
 
     output reg [WIDTH-1:0] sync
 );
 
-    wire [WIDTH-1:0] temp;
+    reg [WIDTH-1:0] temp;
 
-    always @(posedge CLOCK_50) begin
+    always @(posedge clock) begin
         temp <= async;
         sync <= temp;
     end

@@ -16,8 +16,6 @@ module PS2_Controller #(parameter INITIALIZE_MOUSE = 0) (
 	the_command,
 	send_command,
 
-	ps2_clk_posedge,
-
 	// Bidirectionals
 	PS2_CLK,					// PS2 Clock
  	PS2_DAT,					// PS2 Data

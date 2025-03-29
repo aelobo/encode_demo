@@ -1,15 +1,19 @@
 module rotor (
 	input clock,
-	output reg [4:0] rotor1,
-	output reg [4:0] rotor2,
-	output reg [4:0] rotor3,
 	input reset,
 	input rotate,
-    input [2:0] rotor_type_2,
-    input [2:0] rotor_type_3,
-    input [4:0] rotor_start_1,
-    input [4:0] rotor_start_2,
-    input [4:0] rotor_start_3
+	input [2:0] rotor_type_2,
+	input [2:0] rotor_type_3,
+	input [4:0] rotor_start_1,
+	input [4:0] rotor_start_2,
+	input [4:0] rotor_start_3,
+	input update_settings,
+	input rotor_3_increment,
+	input rotor_2_increment,
+	input rotor_1_increment,
+	output reg [4:0] rotor1,
+	output reg [4:0] rotor2,
+	output reg [4:0] rotor3
 );
 
 	wire knock1;
@@ -33,7 +37,32 @@ module rotor (
 			prev_rotate <= 1'b0;
 			prev_knock1 <= 1'b0;
 			prev_knock2 <= 1'b0;
-
+		end
+		else if (rotor_3_increment) begin
+            if (rotor_start_3 == 5'd24)         rotor3 <= 5'b0;
+            else if (rotor_start_3 == 5'd25)    rotor3 <= 5'b1;
+            else                                rotor3 <= rotor_start_3 + 5'd2;
+			if ((prev_knock1==1'b0) && (knock1==1'b1)) rotor2 <= (rotor2 == 5'd25) ? 1'b0 : rotor2 + 5'b1;
+			if ((prev_knock2==1'b0) && (knock2==1'b1)) rotor1 <= (rotor1 == 5'd25) ? 1'b0 : rotor1 + 5'b1;			
+			prev_rotate <= rotate;
+			prev_knock1 <= knock1;
+			prev_knock2 <= knock2;
+		end
+        else if (rotor_2_increment) begin
+			if ((prev_rotate==1'b0) && (rotate==1'b1)) rotor3 <= (rotor3 == 5'd25) ? 1'b0 : rotor3 + 5'b1;
+            rotor2 <= (rotor_start_2 == 5'd25) ? 1'b0 : rotor_start_2 + 5'b1;
+			if ((prev_knock2==1'b0) && (knock2==1'b1)) rotor1 <= (rotor1 == 5'd25) ? 1'b0 : rotor1 + 5'b1;			
+			prev_rotate <= rotate;
+			prev_knock1 <= knock1;
+			prev_knock2 <= knock2;
+		end
+        else if (rotor_1_increment) begin
+			if ((prev_rotate==1'b0) && (rotate==1'b1)) rotor3 <= (rotor3 == 5'd25) ? 1'b0 : rotor3 + 5'b1;
+			if ((prev_knock1==1'b0) && (knock1==1'b1)) rotor2 <= (rotor2 == 5'd25) ? 1'b0 : rotor2 + 5'b1;
+            rotor1 <= (rotor_start_1 == 5'd25) ? 1'b0 : rotor_start_1 + 5'b1;	
+			prev_rotate <= rotate;
+			prev_knock1 <= knock1;
+			prev_knock2 <= knock2;
 		end
 		else
 		begin
