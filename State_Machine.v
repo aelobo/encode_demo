@@ -5,6 +5,8 @@ module State_Machine(
     input reset,
 	input [7:0] i_inputData,
     input rotate,
+	input rotor_start_3_en, rotor_start_2_en, rotor_start_1_en, 
+	output reg [4:0] o_rotor_start_3, o_rotor_start_2, o_rotor_start_1,
 	output reg [7:0] o_outputData,
 	output reg o_valid
 );	
@@ -13,9 +15,28 @@ module State_Machine(
 	reg [2:0] rotor_type_2 = 3'b001;
 	reg [2:0] rotor_type_1 = 3'b000;
 
-	reg [4:0] rotor_start_3 = 5'b00000;
-	reg [4:0] rotor_start_2 = 5'b00000;
-	reg [4:0] rotor_start_1 = 5'b00000;
+	reg [4:0] rotor_start_3;
+	reg [4:0] rotor_start_2;
+	reg [4:0] rotor_start_1;
+
+	always @(posedge clock) begin
+		if (reset) begin
+			rotor_start_3 = 5'b00000;
+			rotor_start_2 = 5'b00000;
+			rotor_start_1 = 5'b00000;
+		end
+		else begin
+			if (rotor_start_3_en) begin
+				rotor_start_3 <= rotor_start_3 + 5'b00001;
+			end
+		    else if (rotor_start_2_en) begin
+				rotor_start_3 <= rotor_start_2 + 5'b00001;
+			end
+			else if (rotor_start_1_en) begin 
+				rotor_start_3 <= rotor_start_1 + 5'b00001;
+			end
+		end
+	end
 
 	reg [4:0] ring_position_3 = 5'b00000;
 	reg [4:0] ring_position_2 = 5'b00000;

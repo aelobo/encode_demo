@@ -31,6 +31,7 @@ module Encode_Demo (
 // Inputs
 input				CLOCK_50;
 input		[3:0]	KEY;
+input       [9:0]   SW;
 
 // Bidirectionals
 inout				PS2_CLK;
@@ -57,11 +58,27 @@ wire		[7:0]	received_data;
 wire				received_data_en;
 
 wire        [7:0]   o_outputData;
-wire                o_valid;        
+wire                o_valid;  
+
+wire                rotor_start_3_sel;   
+wire                rotor_start_2_sel;
+wire                rotor_start_1_sel;
+
+wire        [4:0]   o_rotor_start_3;    // rotor starting position
+wire        [4:0]   o_rotor_start_2;
+wire        [4:0]   o_rotor_start_1;
+wire        [7:0]   display_rotor_start;
+
+wire        [9:0]   SW_sync;            // synchronized inputs
+wire        [3:0]   KEY_sync;           
 
 // Internal Registers
 reg         [2:0]   state;
 reg                 rotate;             // rotate signal, input to State_Machine
+
+reg                 rotor_start_3_en;   // rotor start enables, input to State_Machine
+reg                 rotor_start_2_en;
+reg                 rotor_start_1_en;
 
 reg         [7:0]   history;            // registered scan code             (plaintext)
 wire        [7:0]   ascii_plaintext;    // scan code -> ascii conversion    (plaintext)
@@ -155,6 +172,20 @@ always @(posedge CLOCK_50) begin
 end
 
 
+assign rotor_start_3_sel =  SW_sync[7] && ~SW_sync[8] && ~SW_sync[9];
+assign rotor_start_2_sel = ~SW_sync[7] &&  SW_sync[8] && ~SW_sync[9];
+assign rotor_start_1_sel = ~SW_sync[7] && ~SW_sync[8] &&  SW_sync[9];
+
+assign rotor_start_3_en  = rotor_start_3_sel && ~KEY_sync[3];
+assign rotor_start_2_en  = rotor_start_2_sel && ~KEY_sync[3];
+assign rotor_start_1_en  = rotor_start_1_sel && ~KEY_sync[3];
+
+always @* begin
+    if (rotor_start_3_sel) display_rotor_start = {3'b000, o_rotor_start_3};
+    else if (rotor_start_2_sel) display_rotor_start = {3'b000, o_rotor_start_2};
+    else if (rotor_start_1_sel) display_rotor_start = {3'b000, o_rotor_start_1};
+end
+
 /*****************************************************************************
  *                            Combinational Logic                            *
  *****************************************************************************/
@@ -208,13 +239,13 @@ assign LEDR[9] = 1'b0;
 
     // Plaintext hex scan code on seven segment 0
     Hexadecimal_To_Seven_Segment Segment0 (
-        .hex_number			(history[3:0]),
+        .hex_number			(display_rotor_start[3:0]),
         .seven_seg_display	(HEX0)
     );
 
     // Plaintext hex scan code on seven segment 1
     Hexadecimal_To_Seven_Segment Segment1 (
-        .hex_number			(history[7:4]),
+        .hex_number			(display_rotor_start[7:4]),
         .seven_seg_display	(HEX1)
     );
 
@@ -241,5 +272,33 @@ assign LEDR[9] = 1'b0;
         .hex_number			(encoded_data[7:4]),
         .seven_seg_display	(HEX5)
     );
+
+    Synchronizer #(4) KeySync (
+        .clock              (CLOCK_50),
+        .in                 (KEY[3:0]),
+        .out                (KEY_sync[3:0])
+    );
+
+    Synchronizer #(10) SwitchSync (
+        .clock              (CLOCK_50),
+        .in                 (SW[9:0]),
+        .out                (SW_sync[9:0])
+    );
+
+endmodule
+
+module Synchronizer #(parameter WIDTH=1) (
+    input CLOCK_50,
+    input [WIDTH-1:0] async,
+
+    output reg [WIDTH-1:0] sync
+);
+
+    wire [WIDTH-1:0] temp;
+
+    always @(posedge CLOCK_50) begin
+        temp <= async;
+        sync <= temp;
+    end
 
 endmodule
