@@ -8,6 +8,7 @@ module Encode_Demo (
 	// Bidirectionals
 	PS2_CLK,
 	PS2_DAT,
+    GPIO,
 	
 	// Outputs
 	HEX0,
@@ -37,6 +38,7 @@ input       [9:0]   SW;
 // Bidirectionals
 inout				PS2_CLK;
 inout				PS2_DAT;
+inout       [35:0]  GPIO;
 
 // Outputs
 output		[6:0]	HEX0;
@@ -90,6 +92,8 @@ wire                update_settings_out;
 wire        [4:0]   rotor3_out;
 wire        [4:0]   rotor2_out;
 wire        [4:0]   rotor1_out;
+
+wire        [7:0]   c0, c1, c2, c3, c4, c5, c6, c7;
 
 /*****************************************************************************
  *                             Sequential Logic                              *
@@ -196,6 +200,32 @@ always @* begin
     else                            display_rotor_start = 8'b0;
 end
 
+
+
+// CLOCK DIVIDER FOR MAX SEVEN SEGMENT
+// 3-bit counter to count from 0 to 4
+reg [2:0] clk_counter;
+reg       clk_out;
+
+always @(posedge CLOCK_50) begin
+if (~KEY[0]) begin
+    clk_counter <= 3'd0;
+    clk_out <= 1'b0;
+end else begin
+    // increment counter; reset to 0 when count reaches 4
+    if (clk_counter == 3'd4)
+    clk_counter <= 3'd0;
+    else
+    clk_counter <= clk_counter + 3'd1;
+    
+    // generate clk_out: high for 2 cycles, low for 3 cycles
+    if (clk_counter < 3'd2)
+    clk_out <= 1'b1;
+    else
+    clk_out <= 1'b0;
+end
+end
+
 /*****************************************************************************
  *                            Combinational Logic                            *
  *****************************************************************************/
@@ -222,6 +252,12 @@ assign LEDR[6] = rotor_start_1_en;
 assign LEDR[7] = rotor_start_3_sel;
 assign LEDR[8] = rotor_start_2_sel;
 assign LEDR[9] = rotor_start_1_sel;
+
+assign c3      = 8'b0;
+assign c4      = 8'b0;
+assign c5      = 8'b0;
+assign c6      = 8'b0;
+assign c7      = 8'b0;
 
 /*****************************************************************************
  *                              Internal Modules                             *
@@ -300,6 +336,44 @@ assign LEDR[9] = rotor_start_1_sel;
     ASCII_to_Seven_Segment Segment4 (
         .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
         .seven_seg_display	(HEX5)
+    );
+
+///////////////
+
+
+    ASCII_to_MAX C0(
+        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
+        .seven_seg_display	(c0)
+    );
+
+    ASCII_to_MAX C1 (
+        .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
+        .seven_seg_display	(c1)
+    );
+
+    ASCII_to_MAX C2 (
+        .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
+        .seven_seg_display	(c2)
+    );
+
+
+
+    top max_top(
+        .CLK                (clk_out),
+
+        .c0                     (c0), // H
+        .c1                     (c1), // i
+        .c2                     (c2),
+        .c3                     (c3), // t
+        .c4                     (c4), // A
+        .c5                     (c5), // M
+        .c6                     (c6), // A
+        .c7                     (c7), // L
+
+        .PIN_13                 (GPIO[5]), // CLK
+        .PIN_12                 (GPIO[1]),  // DAT IN
+        .PIN_11                 (GPIO[3]),  // CS
+        .USBPU                  ()
     );
 
 
