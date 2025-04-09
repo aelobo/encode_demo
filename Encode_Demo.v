@@ -253,9 +253,10 @@ assign LEDR[7] = rotor_start_3_sel;
 assign LEDR[8] = rotor_start_2_sel;
 assign LEDR[9] = rotor_start_1_sel;
 
-assign c3      = 8'b0;
-assign c4      = 8'b0;
-assign c5      = 8'b0;
+assign c2      = 8'b0;
+// assign c3      = 8'b0;
+// assign c4      = 8'b0;
+// assign c5      = 8'b0;
 assign c6      = 8'b0;
 assign c7      = 8'b0;
 
@@ -340,40 +341,48 @@ assign c7      = 8'b0;
 
 ///////////////
 
-
-    ASCII_to_MAX C0(
-        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
+    Scan_Code_to_MAX C0 (
+        .scan_code			(history[7:0]),
         .seven_seg_display	(c0)
     );
 
     ASCII_to_MAX C1 (
-        .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
+        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
         .seven_seg_display	(c1)
     );
 
-    ASCII_to_MAX C2 (
-        .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
-        .seven_seg_display	(c2)
+    ASCII_to_MAX C3 (
+        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
+        .seven_seg_display	(c3)
     );
 
+    ASCII_to_MAX C4 (
+        .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
+        .seven_seg_display	(c4)
+    );
+
+    ASCII_to_MAX C5 (
+        .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
+        .seven_seg_display	(c5)
+    );
 
 
     top max_top(
         .CLK                (clk_out),
 
-        .c0                     (c0), // H
-        .c1                     (c1), // i
-        .c2                     (c2),
-        .c3                     (c3), // t
-        .c4                     (c4), // A
-        .c5                     (c5), // M
-        .c6                     (c6), // A
-        .c7                     (c7), // L
+        .c0                 (c0),
+        .c1                 (c1),
+        .c2                 (c2),
+        .c3                 (c3),
+        .c4                 (c4),
+        .c5                 (c5),
+        .c6                 (c6),
+        .c7                 (c7), 
 
-        .PIN_13                 (GPIO[5]), // CLK
-        .PIN_12                 (GPIO[1]),  // DAT IN
-        .PIN_11                 (GPIO[3]),  // CS
-        .USBPU                  ()
+        .PIN_13             (GPIO[5]), // CLK
+        .PIN_12             (GPIO[1]),  // DAT IN
+        .PIN_11             (GPIO[3]),  // CS
+        .USBPU              ()
     );
 
 
@@ -437,21 +446,5 @@ assign c7      = 8'b0;
         .async              (SW[9:0]),
         .sync               (SW_sync[9:0])
     );
-
-endmodule
-
-module Synchronizer #(parameter WIDTH=1) (
-    input clock,
-    input [WIDTH-1:0] async,
-
-    output reg [WIDTH-1:0] sync
-);
-
-    reg [WIDTH-1:0] temp;
-
-    always @(posedge clock) begin
-        temp <= async;
-        sync <= temp;
-    end
 
 endmodule
