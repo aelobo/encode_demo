@@ -67,10 +67,25 @@ wire                rotor_start_3_sel;
 wire                rotor_start_2_sel;
 wire                rotor_start_1_sel;
 
+wire                rotor_num_3_sel;
+wire                rotor_num_2_sel;
+wire                rotor_num_1_sel;
+
+wire                rotor_ring_2_sel;
+wire                rotor_ring_1_sel;
+
 wire        [4:0]   rotor_start_3;    // rotor starting position
 wire        [4:0]   rotor_start_2;
 wire        [4:0]   rotor_start_1;
-reg         [7:0]   display_rotor_start;
+// reg         [7:0]   display_rotor_start;
+
+// wire        [4:0]   rotor_num_3;    // rotor number
+// wire        [4:0]   rotor_num_2;
+// wire        [4:0]   rotor_num_1;
+
+// wire        [4:0]   rotor_ring_3;
+// wire        [4:0]   rotor_ring_2;    // ring starting position
+// wire        [4:0]   rotor_ring_1;
 
 wire        [9:0]   SW_sync;            // synchronized inputs
 wire        [3:0]   KEY_sync;           
@@ -83,6 +98,13 @@ reg                 rotor_start_3_en;   // rotor start enables, input to State_M
 reg                 rotor_start_2_en;
 reg                 rotor_start_1_en;
 
+reg                 rotor_num_3_en;     // rotor start enables, input to State_Machine
+reg                 rotor_num_2_en;
+reg                 rotor_num_1_en;
+
+reg                 rotor_ring_2_en;   // rotor start enables, input to State_Machine
+reg                 rotor_ring_1_en;
+
 reg         [7:0]   history;            // registered scan code             (plaintext)
 wire        [7:0]   ascii_plaintext;    // scan code -> ascii conversion    (plaintext)
 reg         [7:0]   encoded_data;       // encoded ascii value              (ciphertext)
@@ -92,6 +114,14 @@ wire                update_settings_out;
 wire        [4:0]   rotor3_out;
 wire        [4:0]   rotor2_out;
 wire        [4:0]   rotor1_out;
+
+wire        [4:0]   rotor3_num;
+wire        [4:0]   rotor2_num;
+wire        [4:0]   rotor1_num;
+
+wire        [4:0]   rotor3_ring;
+wire        [4:0]   rotor2_ring;
+wire        [4:0]   rotor1_ring;
 
 wire        [7:0]   c0, c1, c2, c3, c4, c5, c6, c7;
 
@@ -183,23 +213,44 @@ always @(posedge CLOCK_50) begin
 end
 
 
-assign rotor_start_3_sel =  SW_sync[7] && ~SW_sync[8] && ~SW_sync[9];
-assign rotor_start_2_sel = ~SW_sync[7] &&  SW_sync[8] && ~SW_sync[9];
-assign rotor_start_1_sel = ~SW_sync[7] && ~SW_sync[8] &&  SW_sync[9];
+
+
+// assign rotor_start_3_sel =  SW_sync[7] && ~SW_sync[8] && ~SW_sync[9];
+// assign rotor_start_2_sel = ~SW_sync[7] &&  SW_sync[8] && ~SW_sync[9];
+// assign rotor_start_1_sel = ~SW_sync[7] && ~SW_sync[8] &&  SW_sync[9];
+
+// assign rotor_start_2_sel = ~SW_sync[7] &&  SW_sync[8] && ~SW_sync[9];
+// assign rotor_start_1_sel = ~SW_sync[7] && ~SW_sync[8] &&  SW_sync[9];
+
+assign rotor_start_3_sel    =  (SW_sync == {10'b00_000_000_01});
+assign rotor_num_3_sel      =  (SW_sync == {10'b00_000_000_10});
+assign rotor_ring_2_sel     =  (SW_sync == {10'b00_000_001_00});
+assign rotor_start_2_sel    =  (SW_sync == {10'b00_000_010_00});
+assign rotor_num_2_sel      =  (SW_sync == {10'b00_000_100_00});
+assign rotor_ring_1_sel     =  (SW_sync == {10'b00_001_000_00});
+assign rotor_start_1_sel    =  (SW_sync == {10'b00_010_000_00});
+assign rotor_num_1_sel      =  (SW_sync == {10'b00_100_000_00});
+
 
 always @* begin
     rotor_start_3_en  = rotor_start_3_sel && ~KEY_sync[3];
     rotor_start_2_en  = rotor_start_2_sel && ~KEY_sync[3];
     rotor_start_1_en  = rotor_start_1_sel && ~KEY_sync[3];
+
+    rotor_num_3_en  = rotor_num_3_sel && ~KEY_sync[3];
+    rotor_num_2_en  = rotor_num_2_sel && ~KEY_sync[3];
+    rotor_num_1_en  = rotor_num_1_sel && ~KEY_sync[3];
+
+    rotor_ring_2_en  = rotor_ring_2_sel && ~KEY_sync[3];
+    rotor_ring_1_en  = rotor_ring_1_sel && ~KEY_sync[3];
 end
 
-always @* begin
-    if (rotor_start_3_sel)          display_rotor_start = {3'b000, rotor_start_3};
-    else if (rotor_start_2_sel)     display_rotor_start = {3'b000, rotor_start_2};
-    else if (rotor_start_1_sel)     display_rotor_start = {3'b000, rotor_start_1};
-    else                            display_rotor_start = 8'b0;
-end
-
+// always @* begin
+//     if (rotor_start_3_sel)          display_rotor_start = {3'b000, rotor_start_3};
+//     else if (rotor_start_2_sel)     display_rotor_start = {3'b000, rotor_start_2};
+//     else if (rotor_start_1_sel)     display_rotor_start = {3'b000, rotor_start_1};
+//     else                            display_rotor_start = 8'b0;
+// end
 
 
 // CLOCK DIVIDER FOR MAX SEVEN SEGMENT
@@ -230,8 +281,9 @@ end
  *                            Combinational Logic                            *
  *****************************************************************************/
 
-assign HEX2 = 7'h7F;
-// assign HEX3 = 7'h7F;
+assign HEX1 = 7'h7F;
+assign HEX3 = 7'h7F;
+// assign HEX4 = 7'h7F;
 // assign HEX5 = 7'h7F;
 
 // assign LEDR[0] = (state == STATE_INIT);
@@ -253,12 +305,14 @@ assign LEDR[7] = rotor_start_3_sel;
 assign LEDR[8] = rotor_start_2_sel;
 assign LEDR[9] = rotor_start_1_sel;
 
-assign c2      = 8'b0;
+// assign c0      = 8'b0;
+// assign c1      = 8'b0;
+// assign c2      = 8'b0;
 // assign c3      = 8'b0;
 // assign c4      = 8'b0;
 // assign c5      = 8'b0;
-assign c6      = 8'b0;
-assign c7      = 8'b0;
+// assign c6      = 8'b0;
+// assign c7      = 8'b0;
 
 /*****************************************************************************
  *                              Internal Modules                             *
@@ -291,21 +345,42 @@ assign c7      = 8'b0;
         .i_inputData        (ascii_plaintext),
         .rotate             (rotate),
 
+        .rotor_ring_2_en    (rotor_ring_2_en),
+        .rotor_ring_1_en    (rotor_ring_1_en),
+
         .rotor_start_3_en   (rotor_start_3_en),
         .rotor_start_2_en   (rotor_start_2_en),
         .rotor_start_1_en   (rotor_start_1_en),
 
-        .rotor_start_3    (rotor_start_3),
-        .rotor_start_2    (rotor_start_2),
-        .rotor_start_1    (rotor_start_1), 
+        .rotor_num_3_en     (rotor_num_3_en),
+        .rotor_num_2_en     (rotor_num_2_en),
+        .rotor_num_1_en     (rotor_num_1_en),
 
         .o_outputData	    (o_outputData), // final output (in decimal)
         .o_valid            (o_valid),
         .update_settings_out(update_settings_out),
 
+        // .rotor_ring_2       (rotor_ring_2),
+        // .rotor_ring_1       (rotor_ring_1), 
+
+        // .rotor_start_3      (rotor_start_3),
+        // .rotor_start_2      (rotor_start_2),
+        // .rotor_start_1      (rotor_start_1), 
+
+        // .rotor_num_3        (rotor_num_3),
+        // .rotor_num_2        (rotor_num_2),
+        // .rotor_num_1        (rotor_num_1), 
+
+        .rotor2_ring        (rotor2_ring),
+        .rotor1_ring        (rotor1_ring),
+        
         .rotor3_out         (rotor3_out),
         .rotor2_out         (rotor2_out),
-        .rotor1_out         (rotor1_out)
+        .rotor1_out         (rotor1_out),
+
+        .rotor3_num         (rotor3_num),
+        .rotor2_num         (rotor2_num),
+        .rotor1_num         (rotor1_num)
     );
 
 
@@ -318,52 +393,91 @@ assign c7      = 8'b0;
     // Plaintext hex scan code on seven segment 2
     ASCII_to_Seven_Segment Segment1 (
         .ascii              (encoded_data[7:0]),
-        .seven_seg_display	(HEX1)
+        .seven_seg_display	(HEX2)
     );
 
-    // Plaintext hex scan code on seven segment 4
-    ASCII_to_Seven_Segment Segment2 (
-        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
-        .seven_seg_display	(HEX3)
-    );
-
-    // Plaintext hex scan code on seven segment 4
-    ASCII_to_Seven_Segment Segment3 (
-        .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
+    // // Plaintext hex scan code on seven segment 4
+    Hexadecimal_To_Seven_Segment Segment2 (
+        .hex_number         (rotor3_out[3:0]),
         .seven_seg_display	(HEX4)
     );
 
-    // Plaintext hex scan code on seven segment 4
-    ASCII_to_Seven_Segment Segment4 (
-        .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
+    Hexadecimal_To_Seven_Segment Segment (
+        .hex_number         (rotor3_out[4]),
         .seven_seg_display	(HEX5)
     );
 
-///////////////
+    // // Plaintext hex scan code on seven segment 4
+    // ASCII_to_Seven_Segment Segment3 (
+    //     .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
+    //     .seven_seg_display	(HEX4)
+    // );
 
-    Scan_Code_to_MAX C0 (
-        .scan_code			(history[7:0]),
-        .seven_seg_display	(c0)
-    );
+    // // Plaintext hex scan code on seven segment 4
+    // ASCII_to_Seven_Segment Segment4 (
+    //     .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
+    //     .seven_seg_display	(HEX5)
+    // );
 
-    ASCII_to_MAX C1 (
+
+    ///////////////////////////////////////////////
+    //          ROTOR 3                         ///
+    ///////////////////////////////////////////////
+
+    // STARTING POSITION
+    ASCII_to_MAX C7 (
         .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
-        .seven_seg_display	(c1)
+        .seven_seg_display	(c7)
     );
 
-    ASCII_to_MAX C3 (
-        .ascii			    ({3'b0, rotor3_out[4:0]} + 8'h40),
-        .seven_seg_display	(c3)
+    // ROTOR NUMBER
+    Decimal_to_MAX C6 (
+        .decimal			({rotor3_num[3:0] + 4'b1}),    // FINISH
+        .seven_seg_display	(c6)
     );
 
+    ///////////////////////////////////////////////
+    //          ROTOR 2                         ///
+    ///////////////////////////////////////////////
+
+    // RING POSITION
+    ASCII_to_MAX C5 (
+        .ascii			    ({3'b0, rotor2_ring[4:0]} + 8'h41),   // FINISH
+        .seven_seg_display	(c5)
+    );
+
+    // STARTING POSITION
     ASCII_to_MAX C4 (
         .ascii			    ({3'b0, rotor2_out[4:0]} + 8'h41),
         .seven_seg_display	(c4)
     );
 
-    ASCII_to_MAX C5 (
+    // ROTOR NUMBER
+    Decimal_to_MAX C3 (                                  // NOT ASCII
+        .decimal			({rotor2_num[3:0] + 4'b1}),   // FINISH
+        .seven_seg_display	(c3)
+    );
+
+    ///////////////////////////////////////////////
+    //          ROTOR 1                         ///
+    ///////////////////////////////////////////////
+
+    // RING POSITION
+    ASCII_to_MAX C2 (
+        .ascii			    ({3'b0, rotor1_ring[4:0]} + 8'h41),  // FINISH
+        .seven_seg_display	(c2)
+    );
+
+    // STARTING POSITION
+    ASCII_to_MAX C1 (
         .ascii			    ({3'b0, rotor1_out[4:0]} + 8'h41),
-        .seven_seg_display	(c5)
+        .seven_seg_display	(c1)
+    );
+
+    // ROTOR NUMBER
+    Decimal_to_MAX C0 (                                  // NOT ASCII
+        .decimal			({rotor1_num[3:0] + 4'b1}),   // FINISH
+        .seven_seg_display	(c0)
     );
 
 
