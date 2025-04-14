@@ -181,7 +181,8 @@ always @(posedge CLOCK_50) begin
             STATE_BREAK: begin
                 if ((received_data == history)) begin
                     state   <= STATE_WAIT;
-                    rotate <= 1'b1;
+                    // rotate <= 1'b1;
+                    rotate <= o_valid;
                     counter <= 13'b0;
                 end
                 else begin
@@ -197,7 +198,8 @@ always @(posedge CLOCK_50) begin
                 else
                     state <= STATE_WAIT;
                 history <= history;
-                rotate <= 1'b1;
+                // rotate <= 1'b1;
+                rotate <= rotate;
                 counter <= counter + 13'b1;
                 encoded_data <= 8'h00;
             end   

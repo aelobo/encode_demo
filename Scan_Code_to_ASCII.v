@@ -48,7 +48,7 @@ module Scan_Code_to_ASCII(
             8'h22: ascii_plaintext = "X";       // X
             8'h35: ascii_plaintext = "Y";       // y
             8'h1A: ascii_plaintext = "Z";       // Z
-            default: ascii_plaintext = 7'b000_0000;
+            default: ascii_plaintext = 8'b000_0000;
         endcase
     end
 
